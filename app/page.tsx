@@ -39,7 +39,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="core-frame" id="architecture" aria-label="Holographic core visual boundary">
+          <div className="core-frame" id="architecture" aria-label="Holographic security core">
+            <HolographicCore />
             <div className="core-orb" aria-hidden="true" />
             <div className="core-label">
               <span>Local triage / <strong>engine reserved</strong></span>
