@@ -15,12 +15,10 @@ export default function HomePage() {
           </a>
           <div className="nav-links">
             <a href="#systems">Systems</a>
-            <a href="/projects">Projects</a>
             <a href="#architecture">Architecture</a>
           </div>
           <div className="nav-actions">
-            <a className="button" href="/login">Sign in</a>
-            <a className="button button-primary" href="/signup">Create account</a>
+            <a className="button button-primary" href="#systems">Explore system</a>
           </div>
         </nav>
       </header>
@@ -36,16 +34,16 @@ export default function HomePage() {
               designed to make complex systems legible.
             </p>
             <div className="hero-actions">
-              <a className="button button-primary" href="/projects">Explore projects</a>
-              <a className="button" href="#systems">View system</a>
+              <a className="button button-primary" href="#systems">Explore system</a>
+              <a className="button" href="#architecture">View architecture</a>
             </div>
           </div>
 
           <div className="core-frame" id="architecture" aria-label="Holographic core visual boundary">
             <div className="core-orb" aria-hidden="true" />
             <div className="core-label">
-              <span>Local triage / <strong>0.11ms</strong></span>
-              <span>Core boundary / <strong>armed</strong></span>
+              <span>Local triage / <strong>engine reserved</strong></span>
+              <span>Core boundary / <strong>ready</strong></span>
             </div>
           </div>
         </section>
