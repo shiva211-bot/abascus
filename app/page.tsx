@@ -1,3 +1,5 @@
+import HolographicCore from "./components/holographic-core";
+
 const systems = [
   ["01 / EXHIBITION", "Project intelligence", "A structured surface for discovering technical work without fake metrics or manufactured social proof."],
   ["02 / DEPLOYMENT", "Operational context", "Deployment metadata and health signals will connect to real provider data in later phases."],
