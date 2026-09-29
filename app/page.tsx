@@ -3,7 +3,7 @@ import HolographicCore from "./components/holographic-core";
 const systems = [
   ["01 / EXHIBITION", "Project intelligence", "A structured surface for discovering technical work without fake metrics or manufactured social proof."],
   ["02 / DEPLOYMENT", "Operational context", "Deployment metadata and health signals will connect to real provider data in later phases."],
-  ["03 / ENGINE", "Holographic core", "Pure Three.js holographic engine with shader displacement and a 20-node swarm."],
+  ["03 / ENGINE", "Holographic core", "Pure Three.js engine with shader displacement, a 20-node swarm, and interaction choreography."],
 ];
 
 export default function HomePage() {
@@ -28,7 +28,7 @@ export default function HomePage() {
       <main>
         <section className="site-shell hero" aria-labelledby="hero-title">
           <div>
-            <span className="eyebrow">Quantum Security Core / Phase 3</span>
+            <span className="eyebrow">Quantum Security Core / Phase 4</span>
             <h1 id="hero-title">Build. <span>Exhibit.</span> Deploy.</h1>
             <p className="hero-copy">
               Abascus is the visual foundation for a technical project exhibition platform:
@@ -41,12 +41,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="core-frame" id="architecture" aria-label="Holographic security core">
+          <div className="core-frame" id="architecture" aria-label="Interactive holographic security core">
             <HolographicCore />
             <div className="core-orb" aria-hidden="true" />
             <div className="core-label">
               <span>Local triage / <strong>engine reserved</strong></span>
-              <span>Core boundary / <strong>ready</strong></span>
+              <span>Scroll / <strong>interaction active</strong></span>
             </div>
           </div>
         </section>
@@ -59,7 +59,8 @@ export default function HomePage() {
             </div>
             <p>
               The visual system is deliberately separated from application and business logic.
-              The Phase 3 WebGL engine is mounted inside this visual boundary.
+              Phase 4 adds scroll choreography, pointer proximity response, and click feedback
+              without introducing application state into the rendering loop.
             </p>
           </div>
 
@@ -76,7 +77,7 @@ export default function HomePage() {
       </main>
 
       <footer className="site-shell site-footer">
-        Abascus / Visual foundation / Phase 2
+        Abascus / Visual foundation / Phase 4
       </footer>
     </>
   );
