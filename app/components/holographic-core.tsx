@@ -4,16 +4,20 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 const SWARM_COUNT = 20;
+const MAX_PIXEL_RATIO = 1.75;
 
 function createCoreMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
       u_time: { value: 0 },
       u_intensity: { value: 0.22 },
+      u_color_mix: { value: 0 },
+      u_click: { value: 0 },
     },
     vertexShader: `
       uniform float u_time;
       uniform float u_intensity;
+      uniform float u_click;
       varying vec3 vNormal;
       varying float vPulse;
 
@@ -25,15 +29,17 @@ function createCoreMaterial() {
           cos(p.y * 5.1 - t * 1.35) * 0.28 +
           sin((p.x + p.z) * 7.0 + t * 0.9) * 0.18 +
           cos((p.y - p.z) * 9.0 - t * 1.15) * 0.12;
-        float displacement = n * u_intensity;
+        float clickWave = sin(length(p) * 11.0 - t * 8.0) * u_click * 0.12;
+        float displacement = n * u_intensity + clickWave;
         vec3 displaced = p + normalize(p) * displacement;
         vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);
         vNormal = normalize(normalMatrix * normalize(p + normalize(p) * displacement));
-        vPulse = n;
+        vPulse = n + clickWave;
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
     fragmentShader: `
+      uniform float u_color_mix;
       varying vec3 vNormal;
       varying float vPulse;
 
@@ -42,7 +48,7 @@ function createCoreMaterial() {
         float signal = clamp(0.52 + vPulse * 0.34 + edge * 0.48, 0.0, 1.0);
         vec3 cyan = vec3(0.33, 0.91, 0.94);
         vec3 emerald = vec3(0.22, 0.90, 0.63);
-        vec3 color = mix(cyan, emerald, clamp(edge * 0.72, 0.0, 1.0));
+        vec3 color = mix(cyan, emerald, clamp(edge * 0.72 + u_color_mix * 0.55, 0.0, 1.0));
         gl_FragColor = vec4(color * signal, 0.92);
       }
     `,
@@ -115,7 +121,7 @@ export default function HolographicCore() {
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(0, 0, 6.5);
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
@@ -123,9 +129,10 @@ export default function HolographicCore() {
     const group = new THREE.Group();
     scene.add(group);
 
+    const coreMaterial = createCoreMaterial();
     const core = new THREE.Mesh(
       new THREE.IcosahedronGeometry(1.35, 5),
-      createCoreMaterial(),
+      coreMaterial,
     );
     group.add(core);
 
@@ -143,10 +150,25 @@ export default function HolographicCore() {
     const swarm = createSwarm();
     group.add(swarm.points);
 
-    const pointer = new THREE.Vector2(0, 0);
+    const pointerNdc = new THREE.Vector2(0, 0);
     const targetRotation = new THREE.Vector2(0, 0);
+    const projected = new THREE.Vector3();
+    const pointerWorld = new THREE.Vector3();
+    const baseColor = new THREE.Color(0x55e8ef);
+    const defensiveColor = new THREE.Color(0x39e6a1);
+
     let frame = 0;
     let disposed = false;
+    let pointerInside = false;
+    let pointerDown = false;
+    let clickEnergy = 0;
+    let scrollProgress = 0;
+    let targetScrollProgress = 0;
+
+    const readScrollProgress = () => {
+      const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      targetScrollProgress = THREE.MathUtils.clamp(window.scrollY / maxScroll, 0, 1);
+    };
 
     const resize = () => {
       const width = Math.max(1, mount.clientWidth);
@@ -158,62 +180,125 @@ export default function HolographicCore() {
 
     const onPointerMove = (event: PointerEvent) => {
       const rect = mount.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      targetRotation.x = pointer.y * 0.18;
-      targetRotation.y = pointer.x * 0.28;
+      pointerNdc.x = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
+      pointerNdc.y = -((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 + 1;
+      targetRotation.x = pointerNdc.y * 0.18;
+      targetRotation.y = pointerNdc.x * 0.28;
+      pointerInside = true;
     };
 
     const onPointerLeave = () => {
+      pointerInside = false;
+      pointerDown = false;
       targetRotation.set(0, 0);
     };
 
+    const onPointerDown = () => {
+      pointerDown = true;
+      clickEnergy = 1;
+    };
+
+    const onPointerUp = () => {
+      pointerDown = false;
+    };
+
+    const onScroll = () => {
+      readScrollProgress();
+    };
+
     const clock = new THREE.Clock();
+    readScrollProgress();
 
     const animate = () => {
       if (disposed) return;
       frame = requestAnimationFrame(animate);
 
-      const time = clock.getElapsedTime();
       const delta = Math.min(clock.getDelta(), 0.033);
+      const time = clock.elapsedTime;
 
-      const material = core.material as THREE.ShaderMaterial;
-      material.uniforms.u_time.value = time;
-      material.uniforms.u_intensity.value = 0.22 + Math.sin(time * 1.7) * 0.045;
+      scrollProgress = THREE.MathUtils.lerp(scrollProgress, targetScrollProgress, 0.055);
+      const tier = THREE.MathUtils.lerp(3, 32, scrollProgress);
+      const rotationSpeed = THREE.MathUtils.lerp(0.16, 0.38, scrollProgress);
+      const swarmRadiusScale = THREE.MathUtils.lerp(1, 1.34, scrollProgress);
+      const colorMix = THREE.MathUtils.lerp(0, 1, scrollProgress);
 
-      group.rotation.y += delta * 0.16;
+      coreMaterial.uniforms.u_time.value = time;
+      coreMaterial.uniforms.u_intensity.value =
+        0.22 + Math.sin(time * 1.7) * 0.045 + clickEnergy * 0.06;
+      coreMaterial.uniforms.u_color_mix.value = colorMix;
+      coreMaterial.uniforms.u_click.value = clickEnergy;
+
+      const color = baseColor.clone().lerp(defensiveColor, colorMix);
+      (swarm.points.material as THREE.PointsMaterial).color.copy(color);
+      (wire.material as THREE.LineBasicMaterial).color.copy(
+        color.clone().lerp(new THREE.Color(0x3c8cff), 0.55),
+      );
+
+      group.rotation.y += delta * rotationSpeed;
       group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targetRotation.x, 0.045);
       group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, targetRotation.y * 0.32, 0.045);
+      swarm.points.scale.setScalar(swarmRadiusScale);
+
+      group.updateMatrixWorld(true);
 
       const position = swarm.positions;
       for (let i = 0; i < SWARM_COUNT; i += 1) {
         const o = i * 3;
         const seed = swarm.seeds[i];
         const pulse = Math.sin(time * 0.75 + seed) * 0.0018;
+
         position[o] += swarm.velocities[o] + Math.sin(time + seed) * pulse;
         position[o + 1] += swarm.velocities[o + 1] + Math.cos(time * 0.9 + seed) * pulse;
         position[o + 2] += swarm.velocities[o + 2] + Math.sin(time * 0.8 + seed * 1.7) * pulse;
 
-        const distance = Math.sqrt(
+        if (pointerInside) {
+          projected.set(position[o], position[o + 1], position[o + 2]);
+          projected.applyMatrix4(swarm.points.matrixWorld).project(camera);
+          const distance = projected.distanceTo(pointerNdc);
+          const proximity = THREE.MathUtils.clamp(1 - distance / 0.34, 0, 1);
+
+          if (proximity > 0) {
+            pointerWorld.set(
+              projected.x - pointerNdc.x,
+              projected.y - pointerNdc.y,
+              0,
+            );
+            const length = Math.max(pointerWorld.length(), 0.0001);
+            pointerWorld.multiplyScalar((proximity * (pointerDown ? 0.035 : -0.012)) / length);
+
+            position[o] += pointerWorld.x;
+            position[o + 1] -= pointerWorld.y;
+            position[o + 2] += Math.sin(seed + time * 4) * proximity * 0.01;
+          }
+        }
+
+        const localDistance = Math.sqrt(
           position[o] ** 2 + position[o + 1] ** 2 + position[o + 2] ** 2,
         );
-        if (distance > 4.1 || distance < 1.75) {
-          const factor = distance > 4.1 ? 0.994 : 1.006;
+        if (localDistance > 4.1 || localDistance < 1.75) {
+          const factor = localDistance > 4.1 ? 0.994 : 1.006;
           position[o] *= factor;
           position[o + 1] *= factor;
           position[o + 2] *= factor;
         }
       }
 
+      clickEnergy = Math.max(0, clickEnergy - delta * 2.8);
       swarm.points.geometry.attributes.position.needsUpdate = true;
       swarm.points.rotation.y = -group.rotation.y * 0.45;
+
       renderer.render(scene, camera);
+
+      void tier;
     };
 
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(mount);
+    window.addEventListener("scroll", onScroll, { passive: true });
     mount.addEventListener("pointermove", onPointerMove);
     mount.addEventListener("pointerleave", onPointerLeave);
+    mount.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerup", onPointerUp);
     resize();
     animate();
 
@@ -221,11 +306,14 @@ export default function HolographicCore() {
       disposed = true;
       cancelAnimationFrame(frame);
       resizeObserver.disconnect();
+      window.removeEventListener("scroll", onScroll);
       mount.removeEventListener("pointermove", onPointerMove);
       mount.removeEventListener("pointerleave", onPointerLeave);
+      mount.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
 
       core.geometry.dispose();
-      (core.material as THREE.Material).dispose();
+      coreMaterial.dispose();
       wire.geometry.dispose();
       (wire.material as THREE.Material).dispose();
       swarm.points.geometry.dispose();
