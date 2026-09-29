@@ -1,7 +1,7 @@
 const systems = [
   ["01 / EXHIBITION", "Project intelligence", "A structured surface for discovering technical work without fake metrics or manufactured social proof."],
   ["02 / DEPLOYMENT", "Operational context", "Deployment metadata and health signals will connect to real provider data in later phases."],
-  ["03 / ENGINE", "Holographic core", "The visual boundary is ready for the pure Three.js neural shield engine in Phase 3."],
+  ["03 / ENGINE", "Holographic core", "Pure Three.js holographic engine with shader displacement and a 20-node swarm."],
 ];
 
 export default function HomePage() {
@@ -26,7 +26,7 @@ export default function HomePage() {
       <main>
         <section className="site-shell hero" aria-labelledby="hero-title">
           <div>
-            <span className="eyebrow">Quantum Security Core / Phase 2</span>
+            <span className="eyebrow">Quantum Security Core / Phase 3</span>
             <h1 id="hero-title">Build. <span>Exhibit.</span> Deploy.</h1>
             <p className="hero-copy">
               Abascus is the visual foundation for a technical project exhibition platform:
@@ -57,7 +57,7 @@ export default function HomePage() {
             </div>
             <p>
               The visual system is deliberately separated from application and business logic.
-              The Phase 3 WebGL engine can attach to this boundary without redesigning the shell.
+              The Phase 3 WebGL engine is mounted inside this visual boundary.
             </p>
           </div>
 
